@@ -1,0 +1,169 @@
+# ESP32-S3-DualEye Project .gitignore
+
+# ==========================================
+# Python
+# ==========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+.venv-*/
+venv/
+ENV/
+env/
+dualeye_voicebot/.venv-*/
+dualeye_voicebot/host/.venv/
+
+# Python distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==========================================
+# ESP32 / ESP-IDF
+# ==========================================
+# Build output
+DualEye-ESP32S3-Firmware-Pack/firmware/build/
+**/build/
+
+# ESP-IDF generated files
+sdkconfig.old
+dependencies.lock
+managed_components/
+
+# Flash binaries
+*.bin
+*.elf
+*.map
+
+# ==========================================
+# IDE / Editor
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.DS_Store
+
+# VS Code workspace
+*.code-workspace
+
+# ==========================================
+# Logs and Runtime
+# ==========================================
+*.log
+logs/
+*.pid
+scripts/.voicebot_server.pid
+
+# ==========================================
+# AI Models (Large Files)
+# ==========================================
+# Models directory should be managed separately (Git LFS or external storage)
+dualeye_voicebot/models/
+!dualeye_voicebot/models/.gitkeep
+!dualeye_voicebot/models/README.md
+
+# Model checkpoints
+*.ckpt
+*.pth
+*.pt
+*.safetensors
+*.gguf
+*.bin
+model.onnx
+
+# ==========================================
+# Data and Archives
+# ==========================================
+# Large data files
+dualeye_voicebot/data/stt_benchmark_wavs/selected/
+dualeye_voicebot/data/stt_benchmark_wavs/real_world/recordings/
+dualeye_voicebot/data/stt_benchmark_wavs/source/
+dualeye_voicebot/data/stt_benchmark_wavs/*.zip
+dualeye_voicebot/data/stt_benchmark_wavs/**/*.zip
+
+# Archives
+*.tar.gz
+*.zip
+*.7z
+*.rar
+dualeye_voicebot-git-archive-*.tar.gz
+**/archives/**/*.tar.gz
+
+# ==========================================
+# External Projects (Managed Separately)
+# ==========================================
+# These should be git submodules or documented as external dependencies
+vllm-omni/
+qwen3-tts-rocm/
+searxng/
+claw/
+mcp/
+.venv_modelscope/
+.venv_qwen_tts_igpu/
+.venv_qwen_tts_rocm/
+
+# Demo (read-only reference)
+ESP32-S3-DualEye-Touch-LCD-1.28-Demo/
+
+# ==========================================
+# Cline / AI Assistant
+# ==========================================
+.cline_storage/
+
+# ==========================================
+# Temporary Files
+# ==========================================
+*.tmp
+tmp/
+temp/
+*.bak
+*.cache
+
+# ==========================================
+# OS Generated
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==========================================
+# Custom Project Exclusions
+# ==========================================
+# Backup configs
+*.old
+*.backup
+
+# Test recordings
+test_recordings/
+recordings/
+
+# WiFi credentials (if stored in files)
+wifi_credentials.txt
+.env.local
+secrets.txt
