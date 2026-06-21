@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+venv/
+env/
+
+# Logs
+*.log
+
+# SSL certificates (self-signed, regenerate locally)
+cert.pem
+key.pem
+
+# Models (too large for git)
+models/

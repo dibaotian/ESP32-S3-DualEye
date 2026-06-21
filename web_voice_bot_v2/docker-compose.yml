@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  voicebot:
+    build: .
+    container_name: dualeye-voicebot
+    ports:
+      - "8888:8888"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ASR_SERVICE_URL=http://host.docker.internal:8101
+      - VLLM_SERVICE_URL=http://host.docker.internal:8102
+      - TTS_SERVICE_URL=http://host.docker.internal:8200
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    volumes:
+      - ./voice_bot.log:/app/voice_bot.log
+      - ./static:/app/static
+      - ./templates:/app/templates
+      - ./app.py:/app/app.py
+      - ./base_handler.py:/app/base_handler.py
+      - ./handlers:/app/handlers
+    networks:
+      - voicebot-network
+
+  # Nginx反向代理 - 处理HTTPS
+  nginx:
+    image: nginx:alpine
+    container_name: dualeye-nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./cert.pem:/etc/nginx/cert.pem:ro
+      - ./key.pem:/etc/nginx/key.pem:ro
+    depends_on:
+      - voicebot
+    restart: unless-stopped
+    networks:
+      - voicebot-network
+
+networks:
+  voicebot-network:
+    driver: bridge

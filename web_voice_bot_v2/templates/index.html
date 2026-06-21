@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DualEye Voice Bot - 超低延迟语音对话</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ DualEye Voice Bot</h1>
+            <p class="subtitle">超低延迟本地语音对话系统</p>
+        </div>
+
+        <div class="chat-container">
+            <div id="chat-messages" class="chat-messages">
+                <div class="system-message">系统就绪，请点击开始对话...</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="start-btn" class="btn btn-primary">
+                <span class="icon">🎤</span>
+                <span class="text">开始对话</span>
+            </button>
+            <button id="reset-btn" class="btn btn-secondary">
+                <span class="icon">🔄</span>
+                <span class="text">重置</span>
+            </button>
+        </div>
+
+        <div class="status-bar">
+            <div id="status" class="status">
+                <span class="dot"></span>
+                <span class="text">等待连接...</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=4"></script>
+</body>
+</html>
