@@ -4,4 +4,6 @@ python-socketio>=5.10.0
 httpx>=0.27.0
 numpy>=1.26.0
 soundfile>=0.12.1
+# 向量长期记忆嵌入(Codex agent 后端用)
+sentence-transformers>=3.0.0
 git+https://github.com/myshell-ai/MeloTTS.git

@@ -6,8 +6,11 @@ Low-Latency Voice Bot Server
 
 import os
 import sys
+import time
+import shutil
 import logging
 import threading
+import subprocess
 from threading import Event
 from queue import Queue
 
@@ -21,8 +24,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'handlers'))
 from vad_handler import VADHandler
 from stt_handler import STTHandler
 from llm_handler import LLMHandler
+from codex_handler import CodexHandler
 from tts_handler import TTSHandler
 from audio_streamer import AudioStreamerHandler
+
+# Agent brain选择: "codex" 用 Codex(本地 vLLM, 带跨轮记忆) | "vllm" 用旧的直连 LLMHandler
+AGENT_BACKEND = os.environ.get("AGENT_BACKEND", "codex")
 
 # Setup logging
 logging.basicConfig(
@@ -83,6 +90,55 @@ tts_output_queue = Queue()
 
 # Pipeline manager
 pipeline_manager = None
+
+# Codex 归一化代理进程 + 当前活跃 client(单用户用默认)
+proxy_proc = None
+codex_handler_ref = None
+active_client_id = "default"
+
+
+def _node_bin_dir():
+    """找到 node/codex 所在目录 (codex CLI 子进程需要 node 在 PATH)。"""
+    codex_path = shutil.which("codex")
+    if codex_path:
+        return os.path.dirname(os.path.realpath(codex_path))
+    # 兜底:常见 nvm 路径
+    import glob
+    for p in sorted(glob.glob(os.path.expanduser("~/.nvm/versions/node/*/bin")), reverse=True):
+        if os.path.exists(os.path.join(p, "codex")):
+            return p
+    return None
+
+
+def start_codex_proxy():
+    """启动 Codex→vLLM 归一化代理 (若未运行)。"""
+    global proxy_proc
+    import urllib.request
+    port = int(os.environ.get("PROXY_PORT", "8210"))
+    try:
+        urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2)
+        logger.info("Codex proxy already running on :%d", port)
+        return
+    except Exception:
+        pass
+
+    proxy_script = os.path.join(os.path.dirname(__file__), "agent", "codex_vllm_proxy.py")
+    vllm_base = os.environ.get("VLLM_SERVICE_URL", "http://localhost:8102") + "/v1"
+    env = os.environ.copy()
+    env["PROXY_PORT"] = str(port)
+    env["VLLM_BASE_URL"] = vllm_base
+    proxy_proc = subprocess.Popen([sys.executable, proxy_script], env=env)
+    logger.info("Started Codex proxy (pid=%s) :%d → %s", proxy_proc.pid, port, vllm_base)
+
+    # 等待就绪
+    for _ in range(30):
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=1)
+            logger.info("✓ Codex proxy is ready")
+            return
+        except Exception:
+            time.sleep(0.5)
+    logger.warning("⚠️ Codex proxy did not become ready in time")
 
 
 class SimpleVAD:
@@ -166,6 +222,20 @@ def handle_connect():
     socketio.emit('status', {'message': 'Connected to voice bot server'})
 
 
+@socketio.on('register')
+def handle_register(data):
+    """
+    前端注册稳定的 client_id(localStorage 里的固定 UUID)。
+    单用户:记录为活跃 client,刷新不丢记忆。
+    多用户(将来):用它把每个连接映射到独立 thread。
+    """
+    global active_client_id
+    if isinstance(data, dict) and data.get('clientId'):
+        active_client_id = str(data['clientId'])
+        logger.info("Registered client_id=%s", active_client_id)
+        socketio.emit('status', {'message': 'Session registered'})
+
+
 @socketio.on('disconnect')
 def handle_disconnect():
     """Client disconnected"""
@@ -221,6 +291,13 @@ def handle_reset():
     while not tts_output_queue.empty():
         tts_output_queue.get()
 
+    # 清掉 Codex 会话(忘记历史,开新 thread)
+    if codex_handler_ref is not None:
+        try:
+            codex_handler_ref.reset_session(active_client_id)
+        except Exception as e:
+            logger.warning("reset_session failed: %s", e)
+
     socketio.emit('status', {'message': 'Conversation reset'})
 
 
@@ -263,16 +340,31 @@ def create_pipeline():
     )
     stt.set_socketio(socketio)
 
-    llm = LLMHandler(
-        stop_event=stop_event,
-        queue_in=stt_output_queue,
-        queue_out=llm_output_queue,
-        api_url=os.environ.get("VLLM_SERVICE_URL", "http://host.docker.internal:8102") + "/v1/chat/completions",
-        model="/home/xilinx/.cache/huggingface/hub/models--local--Qwen3.5-35B-A3B-W4A16-llmcompressor",  # 使用实际模型名称
-        temperature=0.7,
-        max_tokens=1024,
-        timeout=60.0,
-    )
+    global codex_handler_ref
+    if AGENT_BACKEND == "codex":
+        # 先把归一化代理拉起来,Codex 才能打到本地 vLLM
+        start_codex_proxy()
+        llm = CodexHandler(
+            stop_event=stop_event,
+            queue_in=stt_output_queue,
+            queue_out=llm_output_queue,
+            node_bin_dir=_node_bin_dir(),
+            timeout=float(os.environ.get("CODEX_TIMEOUT", "150")),
+        )
+        codex_handler_ref = llm
+        logger.info("🧠 Agent backend: Codex (local vLLM, 跨轮记忆)")
+    else:
+        llm = LLMHandler(
+            stop_event=stop_event,
+            queue_in=stt_output_queue,
+            queue_out=llm_output_queue,
+            api_url=os.environ.get("VLLM_SERVICE_URL", "http://host.docker.internal:8102") + "/v1/chat/completions",
+            model="/home/xilinx/.cache/huggingface/hub/models--local--Qwen3.5-35B-A3B-W4A16-llmcompressor",
+            temperature=0.7,
+            max_tokens=1024,
+            timeout=60.0,
+        )
+        logger.info("🧠 Agent backend: vLLM (直连, 无长期记忆)")
     llm.set_socketio(socketio)
 
     # TTS via Qwen3-TTS proxy service
@@ -356,6 +448,13 @@ def main():
         stop_event.set()
         if pm:
             pm.stop()
+        if proxy_proc is not None:
+            logger.info("Stopping Codex proxy (pid=%s)", proxy_proc.pid)
+            proxy_proc.terminate()
+            try:
+                proxy_proc.wait(timeout=5)
+            except Exception:
+                proxy_proc.kill()
 
     logger.info("Server stopped")
 

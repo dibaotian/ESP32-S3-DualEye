@@ -14,3 +14,20 @@ key.pem
 
 # Models (too large for git)
 models/
+
+# Codex runtime state — only track config.toml & workspace/AGENTS.md
+.codex_home/*
+!.codex_home/config.toml
+!.codex_home/workspace/
+.codex_home/workspace/*
+!.codex_home/workspace/AGENTS.md
+
+# Persisted client_id → thread_id map
+data/sessions.json
+
+# Vector long-term memory store
+data/memory/
+
+# Stray test dirs
+.codex_test_home/
+.codex_test_ws/

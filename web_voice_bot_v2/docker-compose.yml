@@ -11,6 +11,11 @@ services:
       - ASR_SERVICE_URL=http://host.docker.internal:8101
       - VLLM_SERVICE_URL=http://host.docker.internal:8102
       - TTS_SERVICE_URL=http://host.docker.internal:8200
+      # 对话大脑用 Codex(本地 vLLM + 跨轮记忆 + 向量长期记忆)
+      - AGENT_BACKEND=codex
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+      # 记忆可调(可选): PROXY_MAX_TURN_MSGS / MEMORY_TOPK / PROXY_MEMORY
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
@@ -21,6 +26,10 @@ services:
       - ./app.py:/app/app.py
       - ./base_handler.py:/app/base_handler.py
       - ./handlers:/app/handlers
+      # Codex agent 层 + 隔离配置 + 持久化(记忆/会话)
+      - ./agent:/app/agent
+      - ./.codex_home:/app/.codex_home
+      - ./data:/app/data
     networks:
       - voicebot-network
 

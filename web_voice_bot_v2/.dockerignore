@@ -34,6 +34,12 @@ docker-compose.yml
 test_*.py
 benchmark_*.py
 
+# Codex 运行时状态 + 持久化(都通过 volume 挂载,不进构建上下文)
+.codex_home/
+data/
+.codex_test_home/
+.codex_test_ws/
+
 # SSL certificates (will be mounted)
 # cert.pem
 # key.pem

@@ -1,0 +1,12 @@
+# 隔离的 Codex 配置 (仅供语音助手使用,不影响 ~/.codex)
+# 通过 CODEX_HOME=<project>/.codex_home 注入。
+# 模型大脑 = 本地 vLLM,经归一化代理 (codex_vllm_proxy.py :8210) 转发。
+
+model = "/home/xilinx/.cache/huggingface/hub/models--local--Qwen3.5-35B-A3B-W4A16-llmcompressor"
+model_provider = "local_vllm_proxy"
+model_reasoning_effort = "minimal"
+
+[model_providers.local_vllm_proxy]
+name = "Local vLLM (via proxy)"
+base_url = "http://127.0.0.1:8210/v1"
+wire_api = "responses"
