@@ -206,7 +206,8 @@ class SimpleVAD:
 
 
 # Per-server VAD state (single client at a time)
-vad_state = SimpleVAD()
+# 增加 min_speech_ms 到 2000ms (2秒)，过滤掉 TTS 回音和环境噪音导致的误识别
+vad_state = SimpleVAD(min_speech_ms=2000)
 
 
 @app.route('/')
@@ -367,7 +368,7 @@ def create_pipeline():
         logger.info("🧠 Agent backend: vLLM (直连, 无长期记忆)")
     llm.set_socketio(socketio)
 
-    # TTS via Qwen3-TTS proxy service
+    # TTS via edge-tts service (Microsoft Azure TTS, no GPU required)
     tts_enabled = True
 
     if tts_enabled:
@@ -376,7 +377,7 @@ def create_pipeline():
             queue_in=llm_output_queue,
             queue_out=tts_output_queue,
             api_url=os.environ.get("TTS_SERVICE_URL", "http://host.docker.internal:8200") + "/tts",
-            voice="zh-CN-XiaoxiaoNeural",
+            voice="zh-CN-XiaoxiaoNeural",  # edge-tts voice: zh-CN-XiaoxiaoNeural, zh-CN-YunxiNeural, etc.
             timeout=30.0,
         )
         tts.set_socketio(socketio)

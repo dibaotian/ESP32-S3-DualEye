@@ -4,6 +4,8 @@ services:
   voicebot:
     build: .
     container_name: dualeye-voicebot
+    # Note: Running as root for now. Memory files will be owned by root.
+    # Fix with: sudo chown -R xilinx:xilinx ./data/memory/
     ports:
       - "8888:8888"
     environment:

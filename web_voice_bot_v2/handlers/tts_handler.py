@@ -1,6 +1,7 @@
 """
 TTS Handler - calls edge-tts HTTP server running on the host (port 8200).
-POST http://host.docker.internal:8200/tts  {"text": "..."}  → WAV bytes
+POST /tts {"text": "...", "voice": "..."}  → WAV bytes
+Note: edge-tts uses Microsoft Azure TTS API (no GPU required)
 """
 
 import io
@@ -30,7 +31,7 @@ class TTSHandler(BaseHandler):
         setup_args=(),
         setup_kwargs=None,
         api_url: str = "http://host.docker.internal:8200/tts",
-        voice: str = "zh-CN-XiaoxiaoNeural",
+        voice: str = "zh-CN-XiaoxiaoNeural",  # edge-tts voice
         timeout: float = 30.0,
     ):
         super().__init__(stop_event, queue_in, queue_out, setup_args, setup_kwargs)
@@ -43,7 +44,8 @@ class TTSHandler(BaseHandler):
     def setup(self):
         self.client = httpx.Client(timeout=self.timeout)
         try:
-            r = self.client.get(self.api_url.replace("/tts", "/health"), timeout=5.0)
+            health_url = self.api_url.replace("/tts", "/health")
+            r = self.client.get(health_url, timeout=5.0)
             if r.status_code == 200:
                 logger.info(f"✓ TTS service ready at {self.api_url}")
             else:
@@ -59,6 +61,7 @@ class TTSHandler(BaseHandler):
         logger.info(f"TTS: '{text[:60]}'")
 
         try:
+            # edge-tts API
             response = self.client.post(
                 self.api_url,
                 json={"text": text, "voice": self.voice},

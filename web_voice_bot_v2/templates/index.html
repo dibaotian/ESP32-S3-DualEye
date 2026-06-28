@@ -29,6 +29,22 @@
                 <span class="icon">🔄</span>
                 <span class="text">重置</span>
             </button>
+            <button id="vnc-toggle-btn" class="btn btn-secondary">
+                <span class="icon">🖥️</span>
+                <span class="text">远程桌面</span>
+            </button>
+        </div>
+
+        <!-- 远程桌面查看器(noVNC) -->
+        <div id="vnc-container" class="vnc-container" style="display:none;">
+            <div class="vnc-header">
+                <span class="vnc-title" id="vnc-status">远程浏览器 (连接中...)</span>
+                <div>
+                    <button id="vnc-refresh-btn" class="vnc-btn">🔄 刷新</button>
+                    <button id="vnc-close-btn" class="vnc-close">✕</button>
+                </div>
+            </div>
+            <div id="vnc-screen"></div>
         </div>
 
         <div class="status-bar">
@@ -40,5 +56,69 @@
     </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}?v=4"></script>
+
+    <!-- noVNC 客户端库 -->
+    <script type="module">
+        import RFB from '/static/novnc/core/rfb.js';
+
+        let rfb = null;
+        const vncContainer = document.getElementById('vnc-container');
+        const vncScreen = document.getElementById('vnc-screen');
+        const vncStatus = document.getElementById('vnc-status');
+        const toggleBtn = document.getElementById('vnc-toggle-btn');
+        const refreshBtn = document.getElementById('vnc-refresh-btn');
+        const closeBtn = document.getElementById('vnc-close-btn');
+
+        function disconnectVNC() {
+            if (rfb) {
+                rfb.disconnect();
+                rfb = null;
+            }
+            vncScreen.innerHTML = '';
+        }
+
+        function connectVNC() {
+            disconnectVNC(); // 先断开旧连接
+
+            vncStatus.textContent = '远程浏览器 (连接中...)';
+            const url = `ws://${window.location.hostname}:6080`;
+            rfb = new RFB(vncScreen, url, {
+                credentials: { password: '' },
+                scaleViewport: true,
+                resizeSession: false
+            });
+
+            rfb.addEventListener('connect', () => {
+                console.log('VNC connected');
+                vncStatus.textContent = '远程浏览器 (已连接 ✓)';
+                rfb.scaleViewport = true;
+            });
+
+            rfb.addEventListener('disconnect', () => {
+                console.log('VNC disconnected');
+                vncStatus.textContent = '远程浏览器 (已断开)';
+                rfb = null;
+            });
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            if (vncContainer.style.display === 'none') {
+                vncContainer.style.display = 'block';
+                connectVNC();
+            } else {
+                vncContainer.style.display = 'none';
+                disconnectVNC();
+            }
+        });
+
+        refreshBtn.addEventListener('click', () => {
+            connectVNC(); // 重新连接
+        });
+
+        closeBtn.addEventListener('click', () => {
+            vncContainer.style.display = 'none';
+            disconnectVNC();
+        });
+    </script>
 </body>
 </html>
