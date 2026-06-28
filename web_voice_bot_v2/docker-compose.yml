@@ -52,6 +52,20 @@ services:
     networks:
       - voicebot-network
 
+  # noVNC + Firefox浏览器 - 远程桌面
+  novnc-browser:
+    image: accetto/ubuntu-vnc-xfce-firefox-g3:latest
+    container_name: dualeye-novnc
+    environment:
+      - VNC_PW=vncpassword
+      - VNC_RESOLUTION=1280x720
+    ports:
+      - "6080:6901"  # noVNC web接口
+    restart: unless-stopped
+    shm_size: '2gb'  # Firefox需要更大的共享内存
+    networks:
+      - voicebot-network
+
 networks:
   voicebot-network:
     driver: bridge
